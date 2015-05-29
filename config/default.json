@@ -1,0 +1,24 @@
+{
+    "db": {
+        "host": "localhost",
+        "port": "27017",
+        "dbName": "central-control"
+    },
+    "log": {
+        "default": {
+            "console": {
+                "level": "info",
+                "silent": false,
+                "colorize": true,
+                "timestamp": false,
+                "prettyPrint": true,
+                "humanReadableUnhandledException": true
+            }
+        },
+        "server": {
+            "console": {
+                "level": "debug"
+            }
+        }
+    }
+}
