@@ -1,3 +1,5 @@
+'use strict';
+
 var logconf = require('config').log;
 var _ = require('lodash');
 var winston = require('winston');

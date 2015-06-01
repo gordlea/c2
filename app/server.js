@@ -1,3 +1,4 @@
+'use strict';
 var SocketIO = require('socket.io');
 var config = require('config');
 var Hapi = require('hapi');
@@ -21,21 +22,23 @@ class Server {
                 log.info('db connected');
                 return this._startWebEndpoint();
             },
-            function() {
+            () => {
                 process.exit(1);
             })
-            .then(function() {
-                log.info('Server running at:', server.info.uri);
+            .then(() => {
+                log.info('Server running at:', this.server.info.uri);
                 log.debug('Setting up api handlers:');
+            }).catch(function(error) {
+                log.error(error.stack);
             });
     }
 
     _startWebEndpoint() {
         log.verbose('_startWebEndpoint');
-
-        var server = this.server;
-        return new Promise(function(resolve) {
-            server.start(function() {
+        return new Promise((resolve) => {
+            this.server.connection({ port: config.web.port });
+            this.server.start(() => {
+                log.debug('server started');
                 resolve();
             });
         });
@@ -49,7 +52,7 @@ class Server {
                 var connectionStringTemplate = _.template('mongodb://<%=host%>:<%=port%>/<%=dbName%>');
                 var connectionString = connectionStringTemplate(config.db);
 
-                log.debug('connecting to mongodb at:', connectionString);
+                log.info('connecting to mongodb at:', connectionString);
                 mongoose.connect(connectionString);
 
                 var db = mongoose.connection;

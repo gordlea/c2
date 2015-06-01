@@ -4,6 +4,9 @@
         "port": "27017",
         "dbName": "central-control"
     },
+    "web": {
+        "port": 9876
+    },
     "log": {
         "default": {
             "console": {
