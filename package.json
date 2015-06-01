@@ -12,6 +12,7 @@
     "babel": "^5.4.7",
     "config": "^1.13.0",
     "hapi": "^8.6.0",
+    "ip": "^0.3.3",
     "lodash": "^3.9.3",
     "moment-timezone": "^0.3.1",
     "mongoose": "^4.0.4",

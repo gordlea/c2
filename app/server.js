@@ -2,17 +2,19 @@
 var SocketIO = require('socket.io');
 var config = require('config');
 var Hapi = require('hapi');
-var Primus = require("primus");
+var Primus = require('primus');
 var mongoose = require('mongoose');
 var winston = require('winston');
 var _ = require('lodash');
-var log = require('./log.js').getFor('server');
+var log = require('./util/log-manager.js').getFor('server');
+var EventEmitter = require('events').EventEmitter;
 
 var remoteServices = new Map();
 
-class Server {
+class Server extends EventEmitter {
     constructor() {
         log.verbose('initialize');
+        super();
         this.server = new Hapi.Server();
     }
 
@@ -39,16 +41,44 @@ class Server {
     }
 
     _startSocketEndpoint() {
-        this.primus = new Primus(this.server.listener, {});
+        this.primus = new Primus(this.server.listener, { transformer: 'websockets' });
+
+        this.on('identification', (spark, payload) => {
+            this._handleIdentification(payload);
+        });
 
         /*
          * TODO go through list of existing services in db and check if they are alive,
          * and let them know we are back
-         */ 
-        this.primus.on('connection', function (spark) {
-            spark.write('Hello, world!');
+         */
+        this.primus.on('connection', (spark) => {
+            log.info('service connected');
+            // spark.write('hello', { name: 'test' });
+            spark.on('data', (data) => {
+                console.log('server got:', data);
+                this.emit(data.type, spark, data.payload);
+            });
         });
+
+
+
+
+
+        // this.primus.on('data', function(spark) {
+        //     // console.log('got hello from client')
+        // });
     }
+
+    _handleIdentification(spark, identification) {
+        console.log(identification);
+    }
+
+    // _requestServiceIdentification(spark) {
+    //     spark.once('hello', function(identification) {
+    //         console.log('identification');
+    //     });
+    //     spark.write('hello');
+    // }
 
     _startWebEndpoint() {
         log.verbose('_startWebEndpoint');
