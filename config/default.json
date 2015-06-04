@@ -7,6 +7,16 @@
     "web": {
         "port": 9876
     },
+    "serviceManager": {
+        "serviceConfigs": {
+            "killer-robot-service": {
+                "loadBalancer": {
+                    "host": "127.0.0.1",
+                    "port": 4455
+                }
+            }
+        }
+    },
     "log": {
         "default": {
             "console": {
@@ -19,6 +29,11 @@
             }
         },
         "server": {
+            "console": {
+                "level": "debug"
+            }
+        },
+        "service-manager": {
             "console": {
                 "level": "debug"
             }

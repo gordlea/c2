@@ -1,5 +1,4 @@
 'use strict';
-var SocketIO = require('socket.io');
 var config = require('config');
 var Hapi = require('hapi');
 var Primus = require('primus');
@@ -8,26 +7,30 @@ var winston = require('winston');
 var _ = require('lodash');
 var log = require('./util/log-manager.js').getFor('server');
 var EventEmitter = require('events').EventEmitter;
+var ServiceManager = require('./util/service-manager.js');
 
-var remoteServices = new Map();
+
+
 
 class Server extends EventEmitter {
     constructor() {
-        log.verbose('initialize');
+        log.verbose('constructor');
         super();
+        this.serviceManager = new ServiceManager();
         this.server = new Hapi.Server();
     }
 
     start() {
         log.verbose('start');
-        return this._connectToDb()
-            .then(() => {
-                log.info('db connected');
-                return this._startWebEndpoint();
-            },
-            () => {
-                process.exit(1);
-            })
+        // return this._connectToDb()
+        //     .then(() => {
+        //         log.info('db connected');
+        //         return this._startWebEndpoint();
+        //     },
+        //     () => {
+        //         process.exit(1);
+        //     })
+        return this._startWebEndpoint()
             .then(() => {
                 log.info('Server running at:', this.server.info.uri);
                 log.debug('Setting up api handlers:');
@@ -44,7 +47,7 @@ class Server extends EventEmitter {
         this.primus = new Primus(this.server.listener, { transformer: 'websockets' });
 
         this.on('identification', (spark, payload) => {
-            this._handleIdentification(payload);
+            this._handleIdentification(spark, payload);
         });
 
         /*
@@ -55,7 +58,7 @@ class Server extends EventEmitter {
             log.info('service connected');
             // spark.write('hello', { name: 'test' });
             spark.on('data', (data) => {
-                console.log('server got:', data);
+                // console.log('server got:', data);
                 this.emit(data.type, spark, data.payload);
             });
         });
@@ -70,7 +73,20 @@ class Server extends EventEmitter {
     }
 
     _handleIdentification(spark, identification) {
-        console.log(identification);
+        // console.log(spark, identification);
+        this.serviceManager.addServiceConnection(spark, identification);
+        // var existingServices = remoteServices.get(identification.providedService);
+        //
+        // console.log(existingServices);
+        //
+        // if (_.isUndefined(existingServices)) {
+        //     existingServices = {
+        //         services: []
+        //     };
+        // }
+        //
+        // remoteServices.set(identification.providedService, _.assign({}, identification, { spark: spark }));
+        // console.log(remoteServices);
     }
 
     // _requestServiceIdentification(spark) {

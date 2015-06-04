@@ -4,7 +4,7 @@ var C2Request = require('./c2-request.js');
 var _ = require('lodash');
 var ip = require('ip');
 
-class IdentificationRequest extends C2Request {
+class ServiceDefinition extends C2Request {
     constructor(config) {
         super('identification');
 
@@ -13,13 +13,13 @@ class IdentificationRequest extends C2Request {
         if (!_.isNumber(config.port)) {
             throw new Error('required param port is not present or not a number: param=', config.port);
         }
-        if (!_.isString(config.providedService)) {
+        if (!_.isString(config.name)) {
             throw new Error('required param providedService is not present or not a string: param=', config.providedService);
         }
 
         _.defaults(config, {
-            ip: IdentificationRequest.getLocalIp(),
-            requiredServices: []
+            host: ServiceDefinition.getLocalIp(),
+            requires: []
         });
 
         this.payload = config;
@@ -30,4 +30,4 @@ class IdentificationRequest extends C2Request {
     }
 }
 
-export default IdentificationRequest;
+export default ServiceDefinition;

@@ -12,8 +12,9 @@ var client = new Socket('http://localhost:' + config.web.port);
 client.on('open', function open() {
   console.log('connected to c2-service');
   var idReq = new ServiceDefinition({
-      name: 'explosion-service',
-      port: 9876
+      name: 'killer-robot-service',
+      requires: ['explosion-service'],
+      port: 6421
   });
   client.write(idReq);
 });
