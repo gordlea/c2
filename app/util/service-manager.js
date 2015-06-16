@@ -11,12 +11,25 @@ class ServiceConnection extends EventEmitter {
         super();
         this.spark = config.spark;
         this.serviceDefinition = config.serviceDefinition;
+
+        if (!_.isUndefined(this.spark) || !_.isNull(this.spark)) {
+            this.spark.on('end', () => {
+                this.emit('connection closed');
+            });
+        }
     }
 
     getConnectionInfo() {
         var connInfo = _.clone(this.serviceDefinition);
         delete connInfo.requires;
         return connInfo;
+    }
+
+    write(data) {
+        // log.verbose('write')
+        if (!_.isUndefined(this.spark) && !_.isNull(this.spark)) {
+            this.spark.write(data);
+        }
     }
 }
 
@@ -28,6 +41,13 @@ class ManagedService {
 
         this.connections = new Map();
         this.activeConnectionId = null;
+    }
+
+    broadcast(data) {
+        // log.verbose('broadcast');
+        _.forEach(Array.from(this.connections.values()), function(conn) {
+            conn.write(data);
+        });
     }
 
     addConnection(spark, serviceDefinition) {
@@ -45,6 +65,21 @@ class ManagedService {
         }
 
         return connection;
+    }
+
+    removeConnection(connection) {
+        var connectionId = connection.spark.id;
+        if (connectionId !== this.activeConnectionId) {
+            this.connections.delete(connectionId);
+        } else {
+            if (connectionId === loadBalancer) {
+                log.warn('attempting to remove loadbalancer connection, ignored');
+                return;
+            }
+
+            // todo choose new active connection
+            //
+        }
     }
 
     addLoadBalancerConnection(serviceDefinition) {
@@ -71,6 +106,21 @@ class ManagedService {
         } else {
             return this.connections.size > 0;
         }
+    }
+
+    checkRequires(serviceName) {
+        let result = false;
+        if (this.hasActiveConnection()) {
+            result = _.some(Array.from(this.connections.values()), function(conn) {
+                // console.dir(conn.serviceDefinition);
+                return _.some(conn.serviceDefinition.requires, function(requiredServiceName) {
+                    // log.debug(requiredServiceName, ' === ', serviceName);
+                    return requiredServiceName === serviceName;
+                });
+            });
+        }
+        // log.debug(this.name, 'checkRequires(', serviceName, ') ===', result);
+        return result;
     }
 }
 
@@ -107,7 +157,7 @@ class ServiceManager extends EventEmitter {
      * @return {String} serviceId
      */
     addServiceConnection(spark, serviceDefinition) {
-        log.info('adding service', serviceDefinition.name, spark.id);
+        // log.info('adding service', serviceDefinition.name, spark.id);
 
         if (!this.services.has(serviceDefinition.name)) {
             this.services.set(serviceDefinition.name, new ManagedService({name: serviceDefinition.name, loadBalancer: false }));
@@ -117,37 +167,55 @@ class ServiceManager extends EventEmitter {
         // log.debug(service);
         var newConnection = service.addConnection(spark, serviceDefinition);
         // log.debug(service);
-        log.debug('added service:', service.getActiveConnection());
-        this.handleServiceRequiredments(spark, serviceDefinition.requires);
+        var serverConnInfo = service.getActiveConnection().getConnectionInfo();
+        log.debug('added service connection:', serverConnInfo.name,':',serverConnInfo.host,':',serverConnInfo.port);
+        this.handleServiceRequiredments(newConnection);
 
 
 
-        this.emit('service-updated: ' + serviceDefinition.name);
+        // this.emit('service-updated: ' + serviceDefinition.name);
+        this.updateDependantServices(serverConnInfo);
 
-        spark.on('end', () => {
-            this.removeServiceConnection(spark.id);
-        });
     }
 
-    handleServiceRequiredments(spark, requires) {
-        _.forEach(requires, (requiredServiceName) => {
-            this.on('service-updated: ' + requiredServiceName, this.handleServiceUpdate.bind(this, spark, requiredServiceName));
+
+
+    handleServiceRequiredments(serviceConnection) {
+        _.forEach(serviceConnection.serviceDefinition.requires, (requiredServiceName) => {
+            // this.on('service-updated: ' + requiredServiceName, this.handleServiceUpdate.bind(this, spark, requiredServiceName));
 
             if (this.services.has(requiredServiceName)) {
-                this.handleServiceUpdate(spark, requiredServiceName);
+                this.handleServiceUpdate(serviceConnection, requiredServiceName);
             }
         });
 
     }
 
-    handleServiceUpdate(spark, serviceName) {
+    handleServiceUpdate(serviceConnection, serviceName) {
         let service = this.services.get(serviceName);
 
-        var serviceConnection = service.getActiveConnection();
+        var updatedConnection = service.getActiveConnection();
 
-        spark.write({
+        serviceConnection.write({
             type: 'required-service',
-            payload: serviceConnection.getConnectionInfo()
+            payload: updatedConnection.getConnectionInfo()
+        });
+    }
+
+    updateDependantServices(connectionInfo) {
+        let requiredServiceName = connectionInfo.name;
+        // log.verbose('updateDependantServices:', requiredServiceName);
+        // let updatedService = this.services.get(requiredServiceName);
+        // var serviceConnection = updatedService.getActiveConnection();
+        let serviceInfo = {
+            type: 'required-service',
+            payload: connectionInfo
+        };
+
+        this.services.forEach((serviceToNotify) => {
+            if (serviceToNotify.checkRequires(requiredServiceName)) {
+                serviceToNotify.broadcast(serviceInfo);
+            }
         });
     }
 
