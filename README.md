@@ -3,6 +3,8 @@
 The beginnings of a service discovery/dumb pipe event bus for easy docker style
 deployments.
 
+Written in es6 using [Babel](https://babeljs.io/).
+
 ### Background
 
 I was looking for something lightweight to allow for service discovery/dumb pipe
