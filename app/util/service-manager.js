@@ -12,11 +12,11 @@ class ServiceConnection extends EventEmitter {
         this.spark = config.spark;
         this.serviceDefinition = config.serviceDefinition;
 
-        if (!_.isUndefined(this.spark) || !_.isNull(this.spark)) {
-            this.spark.on('end', () => {
-                this.emit('connection closed');
-            });
-        }
+        // if (!_.isUndefined(this.spark) || !_.isNull(this.spark)) {
+        //     this.spark.on('end', () => {
+        //         this.emit('connection closed');
+        //     });
+        // }
     }
 
     getConnectionInfo() {
